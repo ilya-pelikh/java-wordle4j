@@ -1,4 +1,10 @@
 package ru.yandex.practicum;
+import ru.yandex.practicum.model.PrintWriter;
+import ru.yandex.practicum.model.WordleDictionary;
+import ru.yandex.practicum.model.WordleDictionaryLoader;
+import ru.yandex.practicum.model.WordleGame;
+
+import java.util.Scanner;
 
 /*
 в главном классе нам нужно:
@@ -10,9 +16,19 @@ package ru.yandex.practicum;
     вывести состояние игры и конечный результат
  */
 public class Wordle {
-
     public static void main(String[] args) {
+        PrintWriter printWriter = new PrintWriter("log.txt");
+        Scanner scanner = new Scanner(System.in);
 
+        try {
+            WordleDictionaryLoader wordleDictionaryLoader = new WordleDictionaryLoader("words_ru.txt", printWriter);
+            WordleDictionary wordleDictionary = wordleDictionaryLoader.createDictionary();
+            WordleGame wordleGame = new WordleGame(wordleDictionary, scanner);
+
+            wordleGame.run();
+        } catch (Exception e) {
+            printWriter.println("Unhandled error: " + e.getMessage());
+        }
     }
 
 }
