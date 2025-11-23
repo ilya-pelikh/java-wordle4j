@@ -1,94 +1,101 @@
 package ru.yandex.practicum;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.exceptions.NoAvailableHintsException;
-import ru.yandex.practicum.exceptions.WordNotCorrectByRulesException;
-import ru.yandex.practicum.exceptions.WordNotFoundInDictionaryException;
+
+import ru.yandex.practicum.exceptions.DictionaryIsEmpty;
+import ru.yandex.practicum.exceptions.NoAvailableWordsInDictionary;
 import ru.yandex.practicum.model.WordleDictionary;
 
 import java.util.ArrayList;
+import java.util.List;
 
-public class WordleDictionaryTest {
-    public static String[] dict = {"слава", "сяяяя", "сляяя", "слаяя", "славя"};
-    public static WordleDictionary wordleDictionary;
+import static org.junit.jupiter.api.Assertions.*;
 
-    @BeforeAll
-    public static void BeforeAll() {
-        wordleDictionary = new WordleDictionary();
+class WordleDictionaryTest {
+    private WordleDictionary dictionary;
 
-        for (String word : dict) {
-            wordleDictionary.addWord(word);
-        }
+    @BeforeEach
+    void BeforeEach() {
+        dictionary = new WordleDictionary();
     }
 
     @Test
-    @DisplayName("Проверяем нормализацию и добавление")
-    public void testAddingWordsToDictionary() {
-        Assertions.assertEquals(dict.length, wordleDictionary.getWords().size());
-
-       for(String word: wordleDictionary.getWords()) {
-           Assertions.assertTrue(wordleDictionary.getWords().contains(word));
-       }
+    void normalizeWord_shouldConvertToLowerCaseAndReplace() {
+        assertEquals("привет", dictionary.normalizeWord("ПРИВЕТ"));
+        assertEquals("тест", dictionary.normalizeWord("ТЕСТ"));
     }
 
     @Test
-    @DisplayName("Проверяем получение случайного слова")
-    public void testGettingRandomWord() {
-        String randomWord = wordleDictionary.getRandomWord();
-        Assertions.assertTrue(wordleDictionary.getWords().contains(randomWord));
+    void addWord_shouldNormalizeAndStoreWord() {
+        dictionary.addWord("Привет");
+        dictionary.addWord("доЖдь");
+        dictionary.addWord("Тест");
+
+        List<String> expected = List.of("привет", "дождь", "тест");
+        assertTrue(dictionary.getWords().containsAll(expected));
     }
 
     @Test
-    @DisplayName("Проверяем слово на корректность")
-    void testIsWordCorrect() {
-        Assertions.assertDoesNotThrow(() -> wordleDictionary.getIsWordCorrect("слава"));
+    void getRandomWord_shouldReturnWordFromDictionary() {
+        dictionary.addWord("кот");
+        dictionary.addWord("дом");
+        dictionary.addWord("лес");
 
-        Assertions.assertThrows(WordNotFoundInDictionaryException.class,
-                () -> wordleDictionary.getIsWordCorrect("абвгд"));
-
-        Assertions.assertThrows(WordNotCorrectByRulesException.class,
-                () -> wordleDictionary.getIsWordCorrect("программирование"));
+        String randomWord = dictionary.getRandomWord();
+        assertTrue(List.of("кот", "дом", "лес").contains(randomWord));
     }
 
     @Test
-    @DisplayName("Получаем паттерны")
-    void testGettingPattern() {
-        Assertions.assertEquals("+++++", wordleDictionary.getPattern("слава", "слава"));
-        Assertions.assertEquals("-----", wordleDictionary.getPattern("слава", "яяяяя"));
-        Assertions.assertEquals("^^^^^", wordleDictionary.getPattern("слава", "лсссс"));
+    void getRandomWord_shouldThrowExceptionWhenDictionaryIsEmpty() {
+        assertThrows(DictionaryIsEmpty.class, () -> {
+            dictionary.getRandomWord();
+        });
     }
 
     @Test
-    @DisplayName("Проверяем паттерн на успех")
-    void testValidatingSuccessPattern() {
-        Assertions.assertTrue(wordleDictionary.checkPatterForWinning("+++++"));
+    void getWordByRegex_shouldReturnFirstMatchingWordNotInExcluded() throws NoAvailableWordsInDictionary {
+        dictionary.addWord("кот");
+        dictionary.addWord("код");
+        dictionary.addWord("кол");
+
+        ArrayList<String> excluded = new ArrayList<>();
+        excluded.add("кот");
+
+        String result = dictionary.getWordByRegex("к.д", excluded);
+        assertEquals("код", result);
     }
 
     @Test
-    @DisplayName("Получаем слово по паттерну")
-    void testGettingWordForPattern() {
-        String input = dict[0];
-        try {
-            String word = wordleDictionary.getWordForPattern(input, "+----", new ArrayList<>());
-            Assertions.assertEquals(dict[1], word);
-        } catch (NoAvailableHintsException exception) {
-            throw new RuntimeException();
-        }
+    void getWordByRegex_shouldIgnoreExcludedWords() throws NoAvailableWordsInDictionary {
+        dictionary.addWord("кот");
+        dictionary.addWord("код");
+
+        ArrayList<String> excluded = new ArrayList<>();
+        excluded.add("код");
+
+        String result = dictionary.getWordByRegex("к..", excluded);
+        assertEquals("кот", result);
     }
 
     @Test
-    @DisplayName("Получаем слово по подсказке и паттерну")
-    void testGettingHintWordForPattern() {
-        String input = dict[0];
-        try {
-            String word = wordleDictionary.getHintForPattern(input, "+----", new ArrayList<>());
-            Assertions.assertEquals(dict[2], word);
-        } catch (NoAvailableHintsException exception) {
-            throw new RuntimeException();
-        }
+    void getWordByRegex_shouldMatchSimpleRegex() throws NoAvailableWordsInDictionary {
+        dictionary.addWord("мама");
+        dictionary.addWord("рама");
+        dictionary.addWord("лама");
+
+        ArrayList<String> excluded = new ArrayList<>();
+
+        String result = dictionary.getWordByRegex("м..а", excluded);
+        assertEquals("мама", result);
     }
 
+    @Test
+    void getWordByRegex_shouldHandleEmptyDictionary() {
+        ArrayList<String> excluded = new ArrayList<>();
+
+        assertThrows(NoAvailableWordsInDictionary.class, () -> {
+            dictionary.getWordByRegex(".*", excluded);
+        });
+    }
 }
